@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Scenario Audio Training</title>
+  <style>
+    :root {
+      --ink: #f5f7fb;
+      --muted: #aab4c8;
+      --panel: rgba(16, 25, 46, 0.9);
+      --panel-2: #17223d;
+      --line: rgba(255,255,255,.11);
+      --blue: #6ea8fe;
+      --blue-2: #377dff;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --red: #fb7185;
+      --shadow: 0 24px 80px rgba(0,0,0,.35);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 5%, rgba(55,125,255,.22), transparent 32rem),
+        radial-gradient(circle at 92% 20%, rgba(74,222,128,.12), transparent 28rem),
+        #07101f;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 3px solid rgba(110,168,254,.55); outline-offset: 3px; }
+    .shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 38px 0 72px; }
+    .topbar { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 28px; }
+    .eyebrow { color: var(--blue); font-weight: 800; letter-spacing: .13em; text-transform: uppercase; font-size: .76rem; }
+    h1 { margin: 8px 0 10px; font-size: clamp(2rem, 5vw, 4rem); line-height: .98; letter-spacing: -.045em; }
+    h2 { margin: 0 0 10px; font-size: clamp(1.45rem, 3vw, 2rem); letter-spacing: -.025em; }
+    h3 { margin: 0; font-size: 1rem; }
+    p { color: var(--muted); line-height: 1.65; }
+    .lead { max-width: 700px; margin: 0; font-size: 1.02rem; }
+    .reset-link { flex: 0 0 auto; border: 1px solid var(--line); color: var(--muted); background: rgba(255,255,255,.03); border-radius: 999px; padding: 10px 14px; }
+    .reset-link:hover { color: var(--ink); border-color: rgba(255,255,255,.25); }
+
+    .progress-card, .section {
+      background: linear-gradient(145deg, rgba(23,34,61,.96), rgba(11,18,34,.94));
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 24px;
+    }
+    .progress-card { padding: 22px; margin-bottom: 22px; }
+    .progress-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .progress-label { font-weight: 800; }
+    .progress-percent { color: var(--green); font-variant-numeric: tabular-nums; font-weight: 850; }
+    .meter { height: 9px; overflow: hidden; background: rgba(255,255,255,.08); border-radius: 999px; margin-top: 12px; }
+    .meter > span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--blue-2), var(--green)); transition: width .35s ease; }
+
+    .section { padding: clamp(20px, 4vw, 34px); margin-top: 22px; }
+    .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+    .section-head p { margin: 4px 0 0; }
+    .pill { white-space: nowrap; padding: 7px 11px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: .8rem; font-weight: 750; }
+    .pill.ready { border-color: rgba(74,222,128,.35); color: var(--green); background: rgba(74,222,128,.07); }
+
+    .scenario-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .scenario {
+      text-align: left; color: var(--ink); min-height: 128px; padding: 16px; border: 1px solid var(--line);
+      border-radius: 18px; background: rgba(255,255,255,.025); position: relative; transition: transform .2s, border-color .2s, background .2s;
+    }
+    .scenario:not(:disabled):hover { transform: translateY(-2px); border-color: rgba(110,168,254,.6); }
+    .scenario.active { border-color: var(--blue); background: rgba(55,125,255,.11); box-shadow: inset 0 0 0 1px rgba(110,168,254,.12); }
+    .scenario.complete { border-color: rgba(74,222,128,.35); background: rgba(74,222,128,.06); }
+    .scenario:disabled { cursor: not-allowed; opacity: .46; }
+    .scenario-index { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255,255,255,.07); color: var(--blue); font-weight: 900; margin-bottom: 16px; }
+    .scenario.complete .scenario-index { color: #062f16; background: var(--green); }
+    .scenario-status { display: block; color: var(--muted); font-size: .78rem; margin-top: 6px; }
+
+    .player { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; margin-top: 22px; padding: 18px; background: #0a1326; border: 1px solid var(--line); border-radius: 20px; }
+    .play-button { width: 66px; height: 66px; border: 0; border-radius: 50%; color: white; background: linear-gradient(145deg, var(--blue-2), #7357ff); box-shadow: 0 10px 30px rgba(55,125,255,.3); font-weight: 900; }
+    .play-button:hover:not(:disabled) { transform: scale(1.03); }
+    .play-button:disabled { filter: grayscale(1); opacity: .45; cursor: not-allowed; }
+    .player-title { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
+    .time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .88rem; }
+    .audio-meter { position: relative; height: 12px; margin: 11px 0 8px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .audio-meter > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--blue), var(--green)); border-radius: inherit; transition: width .15s linear; }
+    .player-note { color: var(--muted); font-size: .8rem; }
+    .message { min-height: 24px; margin: 14px 0 0; color: var(--muted); font-weight: 700; }
+    .message.success { color: var(--green); }
+    .message.error { color: var(--red); }
+    .message.warning { color: var(--amber); }
+
+    .locked-panel { border: 1px dashed rgba(255,255,255,.18); background: rgba(255,255,255,.02); border-radius: 18px; padding: 22px; color: var(--muted); }
+    .quiz-form { display: grid; gap: 16px; }
+    fieldset { margin: 0; min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.025); }
+    legend { padding: 0 7px; font-weight: 800; line-height: 1.45; }
+    .option { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; color: var(--muted); cursor: pointer; }
+    .option:hover { color: var(--ink); }
+    .option input { margin-top: 4px; accent-color: var(--blue-2); }
+    .primary, .secondary { border-radius: 12px; padding: 12px 17px; font-weight: 850; }
+    .primary { border: 0; color: white; background: linear-gradient(145deg, var(--blue-2), #6755eb); box-shadow: 0 9px 25px rgba(55,125,255,.23); }
+    .primary:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+    .secondary { color: var(--ink); border: 1px solid var(--line); background: rgba(255,255,255,.04); }
+    .quiz-actions, .certificate-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .score-box { border-radius: 16px; padding: 16px 18px; margin-bottom: 16px; font-weight: 800; }
+    .score-box.pass { color: var(--green); background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.3); }
+    .score-box.fail { color: var(--red); background: rgba(251,113,133,.08); border: 1px solid rgba(251,113,133,.3); }
+
+    .name-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; margin: 18px 0; }
+    .name-row input { width: 100%; color: var(--ink); border: 1px solid var(--line); background: #091326; border-radius: 12px; padding: 13px 14px; }
+    .certificate-preview { display: none; margin-top: 22px; aspect-ratio: 1.45/1; color: #14213d; background: #f7f1e3; border: 12px solid #d3ad45; outline: 2px solid #14213d; outline-offset: -18px; padding: clamp(28px, 6vw, 76px); text-align: center; place-items: center; box-shadow: 0 22px 50px rgba(0,0,0,.3); }
+    .certificate-preview.show { display: grid; }
+    .certificate-preview h3 { font-family: Georgia, serif; font-size: clamp(1.65rem, 4vw, 3.3rem); letter-spacing: .04em; }
+    .certificate-preview .cert-name { font-family: Georgia, serif; font-size: clamp(1.6rem, 4vw, 3rem); border-bottom: 1px solid #14213d; padding: 8px 28px; margin: 16px auto; min-width: min(520px, 90%); }
+    .certificate-preview p { color: #33415c; margin: 5px 0; }
+    .cert-meta { font-size: .78rem; margin-top: 18px !important; }
+    .footer { padding: 26px 0 0; text-align: center; color: #77839a; font-size: .82rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 780px) {
+      .scenario-grid { grid-template-columns: repeat(2, 1fr); }
+      .topbar, .section-head { flex-direction: column; }
+      .reset-link { align-self: flex-start; }
+      .name-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .shell { width: min(100% - 20px, 1120px); padding-top: 24px; }
+      .scenario-grid { grid-template-columns: 1fr; }
+      .player { grid-template-columns: 1fr; }
+      .play-button { width: 58px; height: 58px; }
+    }
+    @media print {
+      body * { visibility: hidden !important; }
+      #certificatePreview, #certificatePreview * { visibility: visible !important; }
+      #certificatePreview { display: grid !important; position: fixed; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; box-shadow: none; border-width: 16px; }
+      @page { size: landscape; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Guided learning path</div>
+        <h1>Scenario Audio Training</h1>
+        <p class="lead">Complete each scenario in order, then earn 100% on the knowledge check to unlock your certificate.</p>
+      </div>
+      <button class="reset-link" id="resetProgress" type="button">Reset all progress</button>
+    </header>
+
+    <section class="progress-card" aria-label="Overall course progress">
+      <div class="progress-row">
+        <span class="progress-label" id="overallLabel">0 of 4 scenarios complete</span>
+        <span class="progress-percent" id="overallPercent">0%</span>
+      </div>
+      <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="overallMeter"><span></span></div>
+    </section>
+
+    <section class="section" aria-labelledby="audioHeading">
+      <div class="section-head">
+        <div>
+          <h2 id="audioHeading">1. Listen to every scenario</h2>
+          <p>Fast-forwarding and skipping are disabled. Your validated listening position is saved on this device.</p>
+        </div>
+        <span class="pill" id="audioStatusPill">In progress</span>
+      </div>
+
+      <div class="scenario-grid" id="scenarioGrid" aria-label="Training scenarios"></div>
+
+      <div class="player">
+        <button class="play-button" id="playPause" type="button" aria-label="Play current scenario">Play</button>
+        <div>
+          <div class="player-title">
+            <h3 id="nowPlaying">Scenario 1</h3>
+            <span class="time"><span id="currentTime">0:00</span> / <span id="duration">--:--</span></span>
+          </div>
+          <div class="audio-meter" role="progressbar" aria-label="Current audio progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="audioMeter"><span></span></div>
+          <div class="player-note">Use Play/Pause to listen. The timeline is display-only.</div>
+        </div>
+      </div>
+      <audio id="audio" preload="metadata" controlslist="nodownload noplaybackrate noremoteplayback" disableremoteplayback></audio>
+      <p class="message" id="audioMessage" aria-live="polite"></p>
+    </section>
+
+    <section class="section" aria-labelledby="quizHeading">
+      <div class="section-head">
+        <div>
+          <h2 id="quizHeading">2. Complete the knowledge check</h2>
+          <p>All five answers must be correct. An unsuccessful attempt resets automatically.</p>
+        </div>
+        <span class="pill" id="quizStatusPill">Locked</span>
+      </div>
+      <div id="quizArea"></div>
+    </section>
+
+    <section class="section" aria-labelledby="certificateHeading">
+      <div class="section-head">
+        <div>
+          <h2 id="certificateHeading">3. Certificate of completion</h2>
+          <p>Available only after all four scenarios and a perfect quiz score.</p>
+        </div>
+        <span class="pill" id="certificateStatusPill">Locked</span>
+      </div>
+      <div id="certificateArea" class="locked-panel">Complete the audio path and pass the knowledge check to unlock your certificate.</div>
+      <div class="certificate-preview" id="certificatePreview" aria-label="Certificate of completion">
+        <div>
+          <div style="font-size:.78rem;letter-spacing:.2em;text-transform:uppercase;font-weight:800">Certificate of Completion</div>
+          <h3>Scenario Audio Training</h3>
+          <p>This certifies that</p>
+          <div class="cert-name" id="certName">Learner Name</div>
+          <p>successfully completed all required audio scenarios</p>
+          <p>and earned a score of <strong>100%</strong> on the knowledge check.</p>
+          <p class="cert-meta"><span id="certDate"></span> &nbsp;•&nbsp; Certificate ID: <span id="certId"></span></p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">Progress is stored in this browser only. Clearing browser storage will remove saved progress.</footer>
+  </main>
+
+  <script>
+    'use strict';
+
+    const COURSE_VERSION = 1;
+    const STORAGE_KEY = 'scenario-audio-training-v1';
+    const AUDIO_FILES = [
+      'Scenario_1_Success.m4a',
+      'Scenario_2_Success.m4a',
+      'Scenario_3_Success.m4a',
+      'Scenario_4_Success.m4a'
+    ];
+
+    // Replace these procedural questions with content-specific questions if desired.
+    // Keep correct as the zero-based index of the correct option.
+    const QUESTIONS = [
+      {
+        prompt: 'How many audio scenarios must be fully completed in this training?',
+        options: ['Two', 'Three', 'Four', 'Any number'],
+        correct: 2
+      },
+      {
+        prompt: 'When does the next scenario become available?',
+        options: ['As soon as the current scenario starts', 'After the current scenario finishes', 'After refreshing the page', 'At any time'],
+        correct: 1
+      },
+      {
+        prompt: 'What score is required to complete the knowledge check?',
+        options: ['60%', '80%', '90%', '100%'],
+        correct: 3
+      },
+      {
+        prompt: 'What happens after an unsuccessful quiz attempt?',
+        options: ['The course is permanently locked', 'A certificate is still issued', 'The quiz resets for another attempt', 'The audio progress is deleted'],
+        correct: 2
+      },
+      {
+        prompt: 'When is the certificate of completion unlocked?',
+        options: ['After opening the first audio', 'After entering a name', 'After all audio is complete and the quiz score is 100%', 'Before the quiz'],
+        correct: 2
+      }
+    ];
+
+    function freshState() {
+      return {
+        version: COURSE_VERSION,
+        currentClip: 0,
+        clips: AUDIO_FILES.map(() => ({ position: 0, completed: false })),
+        quizAnswers: {},
+        quizPassed: false,
+        quizAttempts: 0,
+        learnerName: '',
+        completedAt: null,
+        certificateId: null
+      };
+    }
+
+    function loadState() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (!parsed || parsed.version !== COURSE_VERSION || !Array.isArray(parsed.clips) || parsed.clips.length !== AUDIO_FILES.length) return freshState();
+        const clean = freshState();
+        clean.currentClip = Math.max(0, Math.min(AUDIO_FILES.length, Number(parsed.currentClip) || 0));
+        clean.clips = clean.clips.map((clip, index) => ({
+          position: Math.max(0, Number(parsed.clips[index]?.position) || 0),
+          completed: Boolean(parsed.clips[index]?.completed)
+        }));
+        clean.quizAnswers = parsed.quizAnswers && typeof parsed.quizAnswers === 'object' ? parsed.quizAnswers : {};
+        clean.quizPassed = Boolean(parsed.quizPassed) && clean.clips.every(c => c.completed);
+        clean.quizAttempts = Math.max(0, Number(parsed.quizAttempts) || 0);
+        clean.learnerName = typeof parsed.learnerName === 'string' ? parsed.learnerName.slice(0, 80) : '';
+        clean.completedAt = clean.quizPassed ? parsed.completedAt : null;
+        clean.certificateId = clean.quizPassed ? parsed.certificateId : null;
+        const firstIncomplete = clean.clips.findIndex(c => !c.completed);
+        clean.currentClip = firstIncomplete === -1 ? AUDIO_FILES.length : firstIncomplete;
+        return clean;
+      } catch (_) {
+        return freshState();
+      }
+    }
+
+    let state = loadState();
+    let selectedIndex = Math.min(state.currentClip, AUDIO_FILES.length - 1);
+    let internalSeek = false;
+    let maxAllowedTime = 0;
+    let playStartedAt = 0;
+    let playStartedMediaTime = 0;
+    let lastSaveAt = 0;
+    let transientQuizMessage = '';
+
+    const audio = document.getElementById('audio');
+    const playPause = document.getElementById('playPause');
+    const scenarioGrid = document.getElementById('scenarioGrid');
+    const nowPlaying = document.getElementById('nowPlaying');
+    const currentTimeEl = document.getElementById('currentTime');
+    const durationEl = document.getElementById('duration');
+    const audioMeter = document.getElementById('audioMeter');
+    const audioMessage = document.getElementById('audioMessage');
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) return '--:--';
+      const total = Math.floor(seconds);
+      return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    }
+
+    function safePercent(value) {
+      return Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+    }
+
+    function setMessage(text, type = '') {
+      audioMessage.textContent = text;
+      audioMessage.className = `message ${type}`.trim();
+    }
+
+    function allAudioComplete() {
+      return state.clips.every(clip => clip.completed);
+    }
+
+    function completionPercent() {
+      const audioWeight = state.clips.filter(c => c.completed).length * 20;
+      return Math.min(100, audioWeight + (state.quizPassed ? 20 : 0));
+    }
+
+    function renderOverall() {
+      const completeCount = state.clips.filter(c => c.completed).length;
+      const percent = completionPercent();
+      document.getElementById('overallLabel').textContent = state.quizPassed
+        ? 'Training complete — certificate unlocked'
+        : `${completeCount} of 4 scenarios complete`;
+      document.getElementById('overallPercent').textContent = `${percent}%`;
+      const meter = document.getElementById('overallMeter');
+      meter.setAttribute('aria-valuenow', String(percent));
+      meter.querySelector('span').style.width = `${percent}%`;
+      const audioPill = document.getElementById('audioStatusPill');
+      audioPill.textContent = allAudioComplete() ? 'Complete' : 'In progress';
+      audioPill.classList.toggle('ready', allAudioComplete());
+    }
+
+    function renderScenarios() {
+      scenarioGrid.innerHTML = '';
+      AUDIO_FILES.forEach((file, index) => {
+        const clip = state.clips[index];
+        const unlocked = index <= state.currentClip || clip.completed;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `scenario${clip.completed ? ' complete' : ''}${selectedIndex === index ? ' active' : ''}`;
+        button.disabled = !unlocked;
+        button.setAttribute('aria-current', selectedIndex === index ? 'step' : 'false');
+        button.innerHTML = `
+          <span class="scenario-index">${clip.completed ? '✓' : index + 1}</span>
+          <h3>Scenario ${index + 1}</h3>
+          <span class="scenario-status">${clip.completed ? 'Completed — replay available' : unlocked ? (clip.position > 0 ? 'Resume available' : 'Ready to begin') : 'Locked'}</span>
+        `;
+        button.addEventListener('click', () => selectScenario(index));
+        scenarioGrid.appendChild(button);
+      });
+    }
+
+    function setInternalTime(value) {
+      internalSeek = true;
+      try { audio.currentTime = Math.max(0, value); } catch (_) {}
+      window.setTimeout(() => { internalSeek = false; }, 80);
+    }
+
+    function loadSelectedAudio() {
+      audio.pause();
+      audio.playbackRate = 1;
+      audio.defaultPlaybackRate = 1;
+      playPause.textContent = 'Play';
+      playPause.setAttribute('aria-label', `Play scenario ${selectedIndex + 1}`);
+      nowPlaying.textContent = `Scenario ${selectedIndex + 1}`;
+      currentTimeEl.textContent = formatTime(state.clips[selectedIndex].position);
+      durationEl.textContent = '--:--';
+      maxAllowedTime = Math.max(0, state.clips[selectedIndex].position);
+      audio.src = encodeURI(AUDIO_FILES[selectedIndex]);
+      audio.load();
+      setMessage(state.clips[selectedIndex].completed ? 'This scenario is complete. You may replay it.' : 'Ready when you are.');
+    }
+
+    function selectScenario(index) {
+      if (index > state.currentClip && !state.clips[index].completed) {
+        setMessage('Finish the current scenario before continuing.', 'warning');
+        return;
+      }
+      if (!audio.paused) audio.pause();
+      selectedIndex = index;
+      renderScenarios();
+      loadSelectedAudio();
+    }
+
+    function renderPlayerProgress() {
+      const duration = audio.duration;
+      const time = Number.isFinite(audio.currentTime) ? audio.currentTime : state.clips[selectedIndex].position;
+      currentTimeEl.textContent = formatTime(time);
+      durationEl.textContent = formatTime(duration);
+      const percent = Number.isFinite(duration) && duration > 0 ? safePercent((time / duration) * 100) : 0;
+      audioMeter.setAttribute('aria-valuenow', String(Math.round(percent)));
+      audioMeter.querySelector('span').style.width = `${percent}%`;
+    }
+
+    function renderQuiz() {
+      const area = document.getElementById('quizArea');
+      const pill = document.getElementById('quizStatusPill');
+      if (!allAudioComplete()) {
+        pill.textContent = 'Locked';
+        pill.classList.remove('ready');
+        area.innerHTML = '<div class="locked-panel">Finish all four audio scenarios in order to unlock the knowledge check.</div>';
+        return;
+      }
+      pill.textContent = state.quizPassed ? 'Passed — 100%' : 'Ready';
+      pill.classList.add('ready');
+      if (state.quizPassed) {
+        area.innerHTML = `<div class="score-box pass">Perfect score: 5/5 (100%). Knowledge check complete.</div>`;
+        return;
+      }
+
+      const resultMarkup = transientQuizMessage ? `<div class="score-box fail" role="alert">${transientQuizMessage}</div>` : '';
+      area.innerHTML = `${resultMarkup}<form class="quiz-form" id="quizForm" novalidate></form>`;
+      const form = document.getElementById('quizForm');
+      QUESTIONS.forEach((question, questionIndex) => {
+        const fieldset = document.createElement('fieldset');
+        const legend = document.createElement('legend');
+        legend.textContent = `${questionIndex + 1}. ${question.prompt}`;
+        fieldset.appendChild(legend);
+        question.options.forEach((option, optionIndex) => {
+          const label = document.createElement('label');
+          label.className = 'option';
+          const checked = String(state.quizAnswers[questionIndex]) === String(optionIndex);
+          label.innerHTML = `<input type="radio" name="q${questionIndex}" value="${optionIndex}" ${checked ? 'checked' : ''} required> <span>${option}</span>`;
+          fieldset.appendChild(label);
+        });
+        form.appendChild(fieldset);
+      });
+      const actions = document.createElement('div');
+      actions.className = 'quiz-actions';
+      actions.innerHTML = '<button class="primary" type="submit">Score my answers</button><span class="player-note">A score below 100% clears the selections.</span>';
+      form.appendChild(actions);
+      form.addEventListener('change', () => {
+        const data = new FormData(form);
+        QUESTIONS.forEach((_, i) => {
+          if (data.has(`q${i}`)) state.quizAnswers[i] = Number(data.get(`q${i}`));
+        });
+        saveState();
+      });
+      form.addEventListener('submit', scoreQuiz);
+    }
+
+    function scoreQuiz(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const data = new FormData(form);
+      if (QUESTIONS.some((_, index) => !data.has(`q${index}`))) {
+        transientQuizMessage = 'Please answer all five questions before submitting.';
+        renderQuiz();
+        return;
+      }
+      const score = QUESTIONS.reduce((total, question, index) => total + (Number(data.get(`q${index}`)) === question.correct ? 1 : 0), 0);
+      state.quizAttempts += 1;
+      if (score === QUESTIONS.length) {
+        state.quizPassed = true;
+        state.quizAnswers = Object.fromEntries(QUESTIONS.map((_, index) => [index, Number(data.get(`q${index}`))]));
+        state.completedAt = state.completedAt || new Date().toISOString();
+        state.certificateId = state.certificateId || makeCertificateId();
+        transientQuizMessage = '';
+      } else {
+        state.quizPassed = false;
+        state.quizAnswers = {};
+        transientQuizMessage = `Score: ${score}/5 (${score * 20}%). A perfect score is required, so the quiz has been reset. Please try again.`;
+      }
+      saveState();
+      renderAll();
+      document.getElementById('quizHeading').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function makeCertificateId() {
+      const random = (crypto?.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0].toString(36) : Math.random().toString(36).slice(2, 9)).toUpperCase();
+      return `SAT-${new Date().getFullYear()}-${random.slice(0, 8)}`;
+    }
+
+    function renderCertificate() {
+      const area = document.getElementById('certificateArea');
+      const pill = document.getElementById('certificateStatusPill');
+      const preview = document.getElementById('certificatePreview');
+      preview.classList.remove('show');
+      if (!allAudioComplete() || !state.quizPassed) {
+        pill.textContent = 'Locked';
+        pill.classList.remove('ready');
+        area.className = 'locked-panel';
+        area.textContent = 'Complete the audio path and pass the knowledge check to unlock your certificate.';
+        return;
+      }
+      pill.textContent = 'Unlocked';
+      pill.classList.add('ready');
+      area.className = '';
+      area.innerHTML = `
+        <p class="message success">Requirements complete. Enter the learner name exactly as it should appear.</p>
+        <div class="name-row">
+          <label class="sr-only" for="learnerName">Learner name</label>
+          <input id="learnerName" maxlength="80" autocomplete="name" placeholder="Learner full name" value="${escapeHtml(state.learnerName)}">
+          <button class="primary" id="generateCertificate" type="button">Generate certificate</button>
+        </div>
+        <div class="certificate-actions" id="certificateActions" hidden>
+          <button class="primary" id="downloadCertificate" type="button">Download PNG</button>
+          <button class="secondary" id="printCertificate" type="button">Print / Save as PDF</button>
+        </div>
+        <p class="message" id="certificateMessage" aria-live="polite"></p>
+      `;
+      document.getElementById('generateCertificate').addEventListener('click', generateCertificate);
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+    }
+
+    function populateCertificate() {
+      document.getElementById('certName').textContent = state.learnerName;
+      const date = new Date(state.completedAt || Date.now());
+      document.getElementById('certDate').textContent = date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('certId').textContent = state.certificateId;
+    }
+
+    function generateCertificate() {
+      if (!allAudioComplete() || !state.quizPassed) return;
+      const input = document.getElementById('learnerName');
+      const message = document.getElementById('certificateMessage');
+      const name = input.value.trim().replace(/\s+/g, ' ');
+      if (name.length < 2) {
+        message.textContent = 'Enter a valid learner name to generate the certificate.';
+        message.className = 'message error';
+        input.focus();
+        return;
+      }
+      state.learnerName = name.slice(0, 80);
+      state.certificateId = state.certificateId || makeCertificateId();
+      state.completedAt = state.completedAt || new Date().toISOString();
+      saveState();
+      populateCertificate();
+      document.getElementById('certificatePreview').classList.add('show');
+      document.getElementById('certificateActions').hidden = false;
+      document.getElementById('downloadCertificate').onclick = downloadCertificatePng;
+      document.getElementById('printCertificate').onclick = () => window.print();
+      message.textContent = 'Certificate generated. Download it as a PNG or print/save it as a PDF.';
+      message.className = 'message success';
+      document.getElementById('certificatePreview').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function downloadCertificatePng() {
+      if (!state.quizPassed || !allAudioComplete() || !state.learnerName) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 1600;
+      canvas.height = 1100;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#f7f1e3';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = '#d3ad45';
+      ctx.lineWidth = 28;
+      ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
+      ctx.strokeStyle = '#14213d';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(57, 57, canvas.width - 114, canvas.height - 114);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#14213d';
+      ctx.font = '700 25px Arial';
+      ctx.fillText('C E R T I F I C A T E   O F   C O M P L E T I O N', 800, 190);
+      ctx.font = '700 72px Georgia';
+      ctx.fillText('Scenario Audio Training', 800, 315);
+      ctx.fillStyle = '#33415c';
+      ctx.font = '32px Arial';
+      ctx.fillText('This certifies that', 800, 410);
+      ctx.fillStyle = '#14213d';
+      ctx.font = 'italic 68px Georgia';
+      fitText(ctx, state.learnerName, 800, 520, 1160, 68);
+      ctx.strokeStyle = '#14213d';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(300, 555);
+      ctx.lineTo(1300, 555);
+      ctx.stroke();
+      ctx.fillStyle = '#33415c';
+      ctx.font = '30px Arial';
+      ctx.fillText('successfully completed all required audio scenarios', 800, 650);
+      ctx.fillText('and earned a score of 100% on the knowledge check.', 800, 703);
+      const date = new Date(state.completedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      ctx.font = '23px Arial';
+      ctx.fillText(`${date}   •   Certificate ID: ${state.certificateId}`, 800, 845);
+      ctx.font = '700 24px Arial';
+      ctx.fillStyle = '#14213d';
+      ctx.fillText('TRAINING COMPLETE', 800, 930);
+      const link = document.createElement('a');
+      link.download = `Scenario_Audio_Training_Certificate_${state.learnerName.replace(/[^a-z0-9]+/gi, '_')}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function fitText(ctx, text, x, y, maxWidth, startingSize) {
+      let size = startingSize;
+      while (size > 30) {
+        ctx.font = `italic ${size}px Georgia`;
+        if (ctx.measureText(text).width <= maxWidth) break;
+        size -= 2;
+      }
+      ctx.fillText(text, x, y);
+    }
+
+    function renderAll() {
+      renderOverall();
+      renderScenarios();
+      renderQuiz();
+      renderCertificate();
+    }
+
+    playPause.addEventListener('click', async () => {
+      if (!audio.src) loadSelectedAudio();
+      if (audio.paused) {
+        try {
+          audio.playbackRate = 1;
+          await audio.play();
+        } catch (_) {
+          setMessage(`Unable to play ${AUDIO_FILES[selectedIndex]}. Confirm the file is in the same folder as this webpage and that the browser supports M4A audio.`, 'error');
+        }
+      } else {
+        audio.pause();
+      }
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+      const saved = Math.min(state.clips[selectedIndex].position, Math.max(0, audio.duration - 0.25));
+      maxAllowedTime = saved;
+      setInternalTime(saved);
+      renderPlayerProgress();
+    });
+
+    audio.addEventListener('play', () => {
+      audio.playbackRate = 1;
+      playStartedAt = performance.now();
+      playStartedMediaTime = audio.currentTime;
+      maxAllowedTime = Math.max(maxAllowedTime, audio.currentTime);
+      playPause.textContent = 'Pause';
+      playPause.setAttribute('aria-label', `Pause scenario ${selectedIndex + 1}`);
+      setMessage(`Playing scenario ${selectedIndex + 1}.`);
+    });
+
+    audio.addEventListener('pause', () => {
+      playPause.textContent = 'Play';
+      playPause.setAttribute('aria-label', `Play scenario ${selectedIndex + 1}`);
+      if (!audio.ended && Number.isFinite(audio.currentTime)) {
+        state.clips[selectedIndex].position = Math.max(state.clips[selectedIndex].position, Math.min(audio.currentTime, maxAllowedTime));
+        saveState();
+      }
+    });
+
+    audio.addEventListener('ratechange', () => {
+      if (audio.playbackRate !== 1) audio.playbackRate = 1;
+    });
+
+    audio.addEventListener('seeking', () => {
+      if (internalSeek) return;
+      if (audio.currentTime > maxAllowedTime + 0.45) {
+        setInternalTime(maxAllowedTime);
+        setMessage('Skipping ahead is disabled. Continue listening from your validated position.', 'warning');
+      }
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      if (!Number.isFinite(audio.currentTime)) return;
+      if (!audio.paused && playStartedAt) {
+        const elapsedRealSeconds = (performance.now() - playStartedAt) / 1000;
+        const realTimeCeiling = playStartedMediaTime + elapsedRealSeconds + 1.25;
+        if (audio.currentTime > realTimeCeiling) {
+          const rollback = Math.min(maxAllowedTime, realTimeCeiling);
+          setInternalTime(rollback);
+          setMessage('Fast-forwarding is disabled. Playback was returned to the last validated point.', 'warning');
+          return;
+        }
+      }
+      maxAllowedTime = Math.max(maxAllowedTime, audio.currentTime);
+      state.clips[selectedIndex].position = Math.max(state.clips[selectedIndex].position, audio.currentTime);
+      renderPlayerProgress();
+      const now = Date.now();
+      if (now - lastSaveAt > 1000) {
+        lastSaveAt = now;
+        saveState();
+      }
+    });
+
+    audio.addEventListener('ended', () => {
+      const duration = audio.duration;
+      const validFinish = Number.isFinite(duration) && maxAllowedTime >= duration - 1.5;
+      if (!validFinish) {
+        const rollback = Math.min(maxAllowedTime, Math.max(0, duration - 2));
+        setInternalTime(rollback);
+        setMessage('The scenario must be played in full before it can be completed.', 'warning');
+        return;
+      }
+      const wasCurrentRequirement = selectedIndex === state.currentClip && !state.clips[selectedIndex].completed;
+      state.clips[selectedIndex].completed = true;
+      state.clips[selectedIndex].position = duration;
+      if (wasCurrentRequirement) {
+        const nextIncomplete = state.clips.findIndex(c => !c.completed);
+        state.currentClip = nextIncomplete === -1 ? AUDIO_FILES.length : nextIncomplete;
+      }
+      saveState();
+      renderAll();
+      playPause.textContent = 'Play';
+      if (allAudioComplete()) {
+        setMessage('All audio scenarios are complete. The knowledge check is now unlocked.', 'success');
+        document.getElementById('quizHeading').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (wasCurrentRequirement) {
+        setMessage(`Scenario ${selectedIndex + 1} complete. Scenario ${state.currentClip + 1} is now unlocked.`, 'success');
+      } else {
+        setMessage(`Scenario ${selectedIndex + 1} replay complete.`, 'success');
+      }
+    });
+
+    audio.addEventListener('error', () => {
+      setMessage(`Could not load ${AUDIO_FILES[selectedIndex]}. Place all four .m4a files in the same folder as index.html.`, 'error');
+      playPause.disabled = true;
+    });
+
+    audio.addEventListener('canplay', () => { playPause.disabled = false; });
+
+    document.getElementById('resetProgress').addEventListener('click', () => {
+      if (window.confirm('Reset all audio, quiz, and certificate progress on this device?')) {
+        localStorage.removeItem(STORAGE_KEY);
+        window.location.reload();
+      }
+    });
+
+    window.addEventListener('beforeunload', saveState);
+
+    if ('mediaSession' in navigator) {
+      ['seekbackward', 'seekforward', 'seekto'].forEach(action => {
+        try { navigator.mediaSession.setActionHandler(action, () => setMessage('Seeking is disabled for this training.', 'warning')); } catch (_) {}
+      });
+    }
+
+    renderAll();
+    loadSelectedAudio();
+  </script>
+</body>
+</html>
