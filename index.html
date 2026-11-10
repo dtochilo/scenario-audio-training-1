@@ -743,12 +743,23 @@
 
     audio.addEventListener('canplay', () => { playPause.disabled = false; });
 
-    document.getElementById('resetProgress').addEventListener('click', () => {
-      if (window.confirm('Reset all audio, quiz, and certificate progress on this device?')) {
-        localStorage.removeItem(STORAGE_KEY);
-        window.location.reload();
-      }
-    });
+    
+  document.getElementById('resetProgress').addEventListener('click', () => {
+  if (window.confirm('Reset all audio, quiz, and certificate progress on this device?')) {
+
+    // Reset the in-memory copy first
+    state = freshState();
+
+    // Remove persisted progress
+    localStorage.removeItem(STORAGE_KEY);
+
+    // Prevent beforeunload from writing progress back
+    window.removeEventListener('beforeunload', saveState);
+
+    // Reload with a clean state
+    window.location.reload();
+  }
+});
 
     window.addEventListener('beforeunload', saveState);
 
